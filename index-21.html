@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CapChat — Discussion</title>
+<style>
+  :root{
+    --bg: #0e1a16;
+    --panel: #15241f;
+    --bubble-me: #2f7d5b;
+    --bubble-other: #1f332c;
+    --accent: #5fd8a3;
+    --text: #eaf3ee;
+    --text-dim: #8fa79c;
+    --online: #5fd8a3;
+    --offline: #5a6e66;
+  }
+
+  /* ===== THÈME VIOLET NEON ===== */
+  [data-theme="violet"]{
+    --bg: #0d0a1a;
+    --panel: #16112b;
+    --bubble-me: #5a2d9e;
+    --bubble-other: #1e1535;
+    --accent: #b57bff;
+    --text: #f0eaff;
+    --text-dim: #8a7aaa;
+    --online: #b57bff;
+    --offline: #4a3d6e;
+  }
+  [data-theme="violet"] #pseudo-input,
+  [data-theme="violet"] #msg-input{ border-color: #2a1f4a; }
+  [data-theme="violet"] .player-chip{ border-color: #2a1f4a; }
+  [data-theme="violet"] #chat-header{ border-color: #231a3a; }
+  [data-theme="violet"] #input-bar,
+  [data-theme="violet"] #reply-bar{ border-color: #231a3a; }
+  [data-theme="violet"] #players-bar{ border-color: #231a3a; }
+  [data-theme="violet"] #logout-btn{ border-color: #2a1f4a; }
+  [data-theme="violet"] #join-btn,
+  [data-theme="violet"] #send-btn,
+  [data-theme="violet"] #welcome-close-btn{ color: #0d0a1a; }
+  [data-theme="violet"] .dot.online{ box-shadow: 0 0 0 2px rgba(181,123,255,0.25); }
+  [data-theme="violet"] #mode-tabs .tab.active{ color: #0d0a1a; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    height:100%;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overscroll-behavior: none;
+  }
+  #app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    height:100dvh;
+    max-width:560px;
+    margin:0 auto;
+    background: var(--bg);
+  }
+
+  /* --- Écran d'inscription --- */
+  #login-screen{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    height:100%;
+    padding:24px;
+    text-align:center;
+    gap:18px;
+  }
+  #login-screen h1{
+    font-size:1.6rem;
+    letter-spacing:0.02em;
+  }
+  #login-screen p{
+    color: var(--text-dim);
+    font-size:0.92rem;
+    line-height:1.4;
+    max-width:320px;
+  }
+  #pseudo-input{
+    width:100%;
+    max-width:300px;
+    padding:14px 16px;
+    border-radius:12px;
+    border:1px solid #2b423a;
+    background: var(--panel);
+    color: var(--text);
+    font-size:1rem;
+    outline:none;
+  }
+  #pseudo-input:focus{ border-color: var(--accent); }
+  #password-input{
+    width:100%;
+    max-width:300px;
+    padding:14px 16px;
+    border-radius:12px;
+    border:1px solid var(--accent);
+    background: var(--panel);
+    color: var(--text);
+    font-size:1rem;
+    outline:none;
+    animation: fadeIn 0.25s ease;
+  }
+  #password-input:focus{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(95,216,163,0.2); }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  #join-btn{
+    width:100%;
+    max-width:300px;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    background: var(--accent);
+    color:#0e1a16;
+    font-weight:600;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  #join-btn:disabled{ opacity:0.5; }
+  #login-error{ color:#ff8a8a; font-size:0.85rem; min-height:1.2em; }
+
+  #mode-tabs{
+    display:flex;
+    width:100%;
+    max-width:300px;
+    background: var(--panel);
+    border-radius:12px;
+    padding:4px;
+    gap:4px;
+  }
+  #mode-tabs .tab{
+    flex:1;
+    padding:10px 8px;
+    border:none;
+    border-radius:9px;
+    background:transparent;
+    color: var(--text-dim);
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #mode-tabs .tab.active{
+    background: var(--accent);
+    color:#0e1a16;
+  }
+
+  #logout-btn{
+    background:transparent;
+    border:1px solid #2b423a;
+    color: var(--text-dim);
+    font-size:0.7rem;
+    padding:4px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:4px;
+  }
+
+  /* --- Boutons header droite --- */
+  .header-icon-btn{
+    background:transparent;
+    border:none;
+    font-size:1.15rem;
+    cursor:pointer;
+    padding:4px 6px;
+    border-radius:8px;
+    transition: transform 0.15s, opacity 0.15s;
+    opacity:0.75;
+    line-height:1;
+  }
+  .header-icon-btn:active{ transform:scale(0.88); opacity:1; }
+  .header-icon-btn.active{ opacity:1; }
+
+  .header-icons{
+    display:flex;
+    align-items:center;
+    gap:2px;
+  }
+
+  /* --- Header --- */
+  #chat-header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    background: var(--panel);
+    border-bottom:1px solid #1f322b;
+    flex-shrink:0;
+  }
+  #chat-header .header-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:4px;
+  }
+  #chat-header .title{ flex:1; }
+  #chat-header .title h2{ font-size:1.05rem; font-weight:600; }
+  #chat-header .title .sub{ font-size:0.78rem; color: var(--text-dim); margin-top:2px; }
+  #me-pseudo{
+    font-size:0.8rem;
+    color: var(--text-dim);
+    text-align:right;
+  }
+  #me-pseudo b{ color: var(--text); }
+
+  /* --- Messages --- */
+  #messages{
+    flex:1;
+    overflow-y:auto;
+    padding:14px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .msg{
+    max-width:78%;
+    width:fit-content;
+    padding:6px 8px 6px 13px;
+    border-radius:16px;
+    font-size:0.95rem;
+    line-height:1.35;
+    word-wrap:break-word;
+    overflow-wrap:anywhere;
+    white-space:pre-wrap;
+    position:relative;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+  }
+  .msg .text{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .msg.other{
+    align-self:flex-start;
+    background: var(--bubble-other);
+    border-bottom-left-radius:4px;
+  }
+  .msg.me{
+    align-self:flex-end;
+    background: var(--bubble-me);
+    color:#fff;
+    border-bottom-right-radius:4px;
+  }
+  .msg .meta{
+    flex-shrink:0;
+    font-size:0.68rem;
+    color: rgba(255,255,255,0.55);
+    margin-left:8px;
+    padding:0 5px 2px 0;
+    white-space:nowrap;
+    align-self:flex-end;
+  }
+  .msg.other .meta{ color: var(--text-dim); }
+  .msg .author{
+    display:block;
+    width:100%;
+    font-size:0.72rem;
+    font-weight:600;
+    color: var(--accent);
+    margin-bottom:2px;
+  }
+  .msg .seen-by{
+    display:block;
+    width:100%;
+    font-size:0.68rem;
+    color:#6fb6ff;
+    margin-top:3px;
+    padding-right:4px;
+  }
+  .msg.show-seen .seen-by{ display:block; }
+  .msg:not(.show-seen) .seen-by{ display:none; }
+  .day-divider{
+    align-self:center;
+    font-size:0.72rem;
+    color: var(--text-dim);
+    background: var(--panel);
+    padding:3px 12px;
+    border-radius:10px;
+    margin:8px 0;
+  }
+
+  /* --- Input bar --- */
+  #input-bar{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    padding:10px 12px;
+    background: var(--panel);
+    border-top:1px solid #1f322b;
+    flex-shrink:0;
+  }
+  #msg-input{
+    flex:1;
+    resize:none;
+    border:1px solid #2b423a;
+    background: var(--bg);
+    color: var(--text);
+    border-radius:18px;
+    padding:11px 16px;
+    font-size:1rem;
+    max-height:120px;
+    line-height:1.3;
+    outline:none;
+    font-family:inherit;
+  }
+  #msg-input:focus{ border-color: var(--accent); }
+  #send-btn{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    border:none;
+    background: var(--accent);
+    color:#0e1a16;
+    font-size:1.2rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  #send-btn:disabled{ opacity:0.4; }
+
+  /* --- Liste des joueurs (panneau latéral simple) --- */
+  #players-bar{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:10px 12px;
+    background: var(--panel);
+    border-bottom:1px solid #1f322b;
+    flex-shrink:0;
+    -webkit-overflow-scrolling:touch;
+  }
+  .player-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 12px;
+    border-radius:20px;
+    background: var(--bg);
+    border:1px solid #2b423a;
+    font-size:0.8rem;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background: var(--offline);
+    flex-shrink:0;
+  }
+  .dot.online{ background: var(--online); box-shadow:0 0 0 2px rgba(95,216,163,0.25); }
+
+  #app.hidden{ display:none; }
+  .hidden{ display:none !important; }
+
+  /* --- Modal de bienvenue --- */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:20px;
+  }
+  .modal-box{
+    background: var(--panel);
+    border-radius:16px;
+    padding:22px;
+    max-width:380px;
+    max-height:85vh;
+    overflow-y:auto;
+    text-align:left;
+  }
+  .modal-box h2{
+    font-size:1.2rem;
+    margin-bottom:10px;
+    text-align:center;
+  }
+  .modal-box p{
+    font-size:0.88rem;
+    line-height:1.45;
+    color: var(--text);
+    margin-bottom:8px;
+  }
+  .modal-box ul{
+    font-size:0.85rem;
+    line-height:1.5;
+    color: var(--text-dim);
+    margin:8px 0 12px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .modal-box ul b{ color: var(--text); }
+  #welcome-close-btn{
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:none;
+    background: var(--accent);
+    color:#0e1a16;
+    font-weight:600;
+    font-size:0.95rem;
+    cursor:pointer;
+    margin-top:6px;
+  }
+
+  /* --- Swipe to reply --- */
+  .msg-wrapper{
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    max-width:100%;
+  }
+  .msg-wrapper.me{ align-self:flex-end; align-items:flex-end; }
+  .msg-wrapper.other{ align-self:flex-start; align-items:flex-start; }
+  .msg-wrapper .swipe-content{
+    display:flex;
+    flex-direction:column;
+    transition: transform 0.15s ease;
+    touch-action: pan-y;
+    max-width:100%;
+  }
+  .msg-wrapper .swipe-content.me{ align-items:flex-end; }
+  .msg-wrapper .swipe-content.other{ align-items:flex-start; }
+  .reply-icon{
+    position:absolute;
+    left:-34px;
+    top:50%;
+    transform:translateY(-50%);
+    opacity:0;
+    color: var(--accent);
+    font-size:1.1rem;
+    transition:opacity 0.1s;
+  }
+  .msg-wrapper.me .reply-icon{ left:auto; right:-34px; }
+  .reply-icon.visible{ opacity:1; }
+
+  /* --- Aperçu de réponse (dans la bulle) --- */
+  .reply-preview{
+    width:100%;
+    background: rgba(0,0,0,0.18);
+    border-left:3px solid var(--accent);
+    border-radius:8px;
+    padding:5px 8px;
+    margin-bottom:4px;
+    font-size:0.78rem;
+    color: var(--text-dim);
+    overflow:hidden;
+  }
+  .reply-preview .reply-author{
+    color: var(--accent);
+    font-weight:600;
+    display:block;
+  }
+  .reply-preview .reply-text{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* --- Barre de réponse au-dessus de l'input --- */
+  #reply-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 12px;
+    background: var(--panel);
+    border-top:1px solid #1f322b;
+    border-bottom:1px solid #1f322b;
+  }
+  #reply-bar .reply-info{
+    flex:1;
+    min-width:0;
+    font-size:0.8rem;
+    color: var(--text-dim);
+    overflow:hidden;
+  }
+  #reply-bar .reply-info b{ color: var(--accent); display:block; font-size:0.78rem; }
+  #reply-bar .reply-info span{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #reply-cancel-btn{
+    background:transparent;
+    border:none;
+    color: var(--text-dim);
+    font-size:1.2rem;
+    cursor:pointer;
+    padding:4px 8px;
+  }
+
+  /* --- Tag "modifié" --- */
+  .msg .edited-tag{
+    font-size:0.65rem;
+    color: rgba(255,255,255,0.5);
+    margin-left:4px;
+  }
+  .msg.other .edited-tag{ color: var(--text-dim); }
+
+  /* --- Message supprimé (style WhatsApp) --- */
+  .msg em.deleted-msg{
+    font-style:italic;
+    opacity:0.55;
+    font-size:0.9rem;
+  }
+
+  /* --- Menu d'actions (modifier / supprimer) --- */
+  #action-menu{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:900;
+  }
+  #action-menu .menu-box{
+    background: var(--panel);
+    border-radius:16px 16px 0 0;
+    width:100%;
+    max-width:560px;
+    padding:8px;
+    display:flex;
+    flex-direction:column;
+  }
+  #action-menu button{
+    background:transparent;
+    border:none;
+    color: var(--text);
+    font-size:0.95rem;
+    text-align:left;
+    padding:14px 16px;
+    border-radius:10px;
+    cursor:pointer;
+  }
+  #action-menu button:active{ background: var(--bg); }
+  #action-menu button.danger{ color:#ff8a8a; }
+</style>
+</head>
+<body>
+
+<div id="welcome-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2>👋 Bienvenue sur CapChat</h2>
+    <p>Ce site a été créé par <b>Nathan</b>, juste pour <b>Shayan et Loona</b> 🎉</p>
+    <p>Quelques infos importantes :</p>
+    <ul>
+      <li>Il n'y a <b>pas de notifications</b> comme sur WhatsApp. Il faut revenir sur le site pour voir si vous avez de nouveaux messages.</li>
+      <li>Pour <b>répondre</b> à un message précis, glisse-le vers la droite.</li>
+      <li>Pour voir si quelqu'un a <b>vu ton message</b>, fais un appui long sur la bulle.</li>
+      <li>Tu peux <b>modifier</b> ou <b>supprimer</b> tes propres messages avec un appui long.</li>
+      <li>⚠️ Toutes les <b>24 heures</b>, les discussions sont <b>effacées</b> pour libérer de l'espace.</li>
+    </ul>
+    <p>Amusez-vous bien et passez un bon moment 💚</p>
+    <button id="welcome-close-btn">C'est compris !</button>
+  </div>
+</div>
+
+<div id="login-screen">
+  <h1>💬 CapChat</h1>
+  <p id="login-desc">Connecte-toi avec ton pseudo existant, ou crée un nouveau compte.</p>
+
+  <div id="mode-tabs">
+    <button id="tab-login" class="tab active">Se connecter</button>
+    <button id="tab-create" class="tab">Créer un compte</button>
+  </div>
+
+  <input id="pseudo-input" type="text" placeholder="Ton pseudo" maxlength="20" autocomplete="off" />
+  <input id="password-input" type="password" placeholder="Mot de passe admin" autocomplete="off" style="display:none;" />
+  <button id="join-btn">Se connecter</button>
+  <div id="login-error"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div id="chat-header">
+    <div class="title">
+      <h2>Discussion générale</h2>
+      <div class="sub" id="players-online-summary">Chargement...</div>
+    </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button id="theme-btn" class="header-icon-btn" title="Changer de thème">🎨</button>
+        <button id="music-btn" class="header-icon-btn" title="Musique de fond">🎵</button>
+      </div>
+      <div id="me-pseudo"></div>
+      <button id="logout-btn">Changer de compte</button>
+    </div>
+  </div>
+
+  <div id="players-bar"></div>
+
+  <div id="messages"></div>
+
+  <div id="reply-bar" class="hidden">
+    <div class="reply-info">
+      <b id="reply-bar-author"></b>
+      <span id="reply-bar-text"></span>
+    </div>
+    <button id="reply-cancel-btn">✕</button>
+  </div>
+
+  <div id="input-bar">
+    <textarea id="msg-input" rows="1" placeholder="Écris un message... 😄" maxlength="500"></textarea>
+    <button id="send-btn">➤</button>
+  </div>
+</div>
+
+<div id="action-menu" class="hidden">
+  <div class="menu-box">
+    <button id="action-reply">↩️ Répondre</button>
+    <button id="action-edit">✏️ Modifier</button>
+    <button id="action-delete" class="danger">🗑️ Supprimer</button>
+    <button id="action-cancel">Annuler</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ====== CONFIGURATION SUPABASE ======
+const SUPABASE_URL = "https://yhdyivsxovztidhddewj.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloZHlpdnN4b3Z6dGlkaGRkZXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NTcyOTUsImV4cCI6MjA5MzAzMzI5NX0.BCs4_GvRdSHs7bZ7Kcp-xsBDlk23oIHm1F4PXngQ9GA";
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ====== ETAT ======
+const ADMIN_PSEUDO = "nathan";
+let myPseudo = localStorage.getItem("capchat_pseudo") || null;
+const isAdmin = () => myPseudo && myPseudo.toLowerCase() === ADMIN_PSEUDO;
+let lastSeenInterval = null;
+let messagesChannel = null;
+let playersChannel = null;
+
+const loginScreen = document.getElementById("login-screen");
+const app = document.getElementById("app");
+const pseudoInput = document.getElementById("pseudo-input");
+const joinBtn = document.getElementById("join-btn");
+const loginError = document.getElementById("login-error");
+const loginDesc = document.getElementById("login-desc");
+const tabLogin = document.getElementById("tab-login");
+const tabCreate = document.getElementById("tab-create");
+const logoutBtn = document.getElementById("logout-btn");
+const messagesEl = document.getElementById("messages");
+const msgInput = document.getElementById("msg-input");
+const sendBtn = document.getElementById("send-btn");
+const mePseudoEl = document.getElementById("me-pseudo");
+const playersBar = document.getElementById("players-bar");
+const playersSummary = document.getElementById("players-online-summary");
+const welcomeModal = document.getElementById("welcome-modal");
+const welcomeCloseBtn = document.getElementById("welcome-close-btn");
+const replyBar = document.getElementById("reply-bar");
+const replyBarAuthor = document.getElementById("reply-bar-author");
+const replyBarText = document.getElementById("reply-bar-text");
+const replyCancelBtn = document.getElementById("reply-cancel-btn");
+const actionMenu = document.getElementById("action-menu");
+const actionReply = document.getElementById("action-reply");
+const actionEdit = document.getElementById("action-edit");
+const actionDelete = document.getElementById("action-delete");
+const actionCancel = document.getElementById("action-cancel");
+
+let loginMode = "login"; // "login" ou "create"
+let replyingTo = null; // { id, pseudo, content }
+let editingMessageId = null; // id du message en cours d'édition
+let activeMenuMessage = null; // message ciblé par le menu d'actions
+
+const CLEANUP_KEY = "capchat_last_cleanup";
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
+
+// ====== ONLINE STATUS HELPERS ======
+const ONLINE_THRESHOLD_MS = 60 * 1000; // considéré "en ligne" si vu il y a < 60s
+const HEARTBEAT_MS = 25 * 1000; // on met à jour last_seen toutes les 25s
+
+function timeAgoLabel(lastSeenIso){
+  const diffMs = Date.now() - new Date(lastSeenIso).getTime();
+  if (diffMs < ONLINE_THRESHOLD_MS) return { online: true, label: "en ligne" };
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return { online: false, label: "à l'instant" };
+  if (mins < 60) return { online: false, label: `vu il y a ${mins} min` };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return { online: false, label: `vu il y a ${hours} h` };
+  const days = Math.floor(hours / 24);
+  return { online: false, label: `vu il y a ${days} j` };
+}
+
+function formatTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDay(iso){
+  const d = new Date(iso);
+  const today = new Date();
+  const yest = new Date(); yest.setDate(today.getDate() - 1);
+  const sameDay = (a,b) => a.toDateString() === b.toDateString();
+  if (sameDay(d, today)) return "Aujourd'hui";
+  if (sameDay(d, yest)) return "Hier";
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
+// ====== TABS LOGIN / CREATION ======
+function setLoginMode(mode){
+  loginMode = mode;
+  loginError.textContent = "";
+  pseudoInput.value = "";
+  passwordInput.style.display = "none";
+  passwordInput.value = "";
+  if (mode === "login") {
+    tabLogin.classList.add("active");
+    tabCreate.classList.remove("active");
+    loginDesc.textContent = "Entre le pseudo de ton compte existant.";
+    joinBtn.textContent = "Se connecter";
+    pseudoInput.placeholder = "Ton pseudo";
+  } else {
+    tabLogin.classList.remove("active");
+    tabCreate.classList.add("active");
+    loginDesc.textContent = "Choisis un nouveau pseudo pour créer ton compte.";
+    joinBtn.textContent = "Créer le compte";
+    pseudoInput.placeholder = "Nouveau pseudo";
+  }
+  pseudoInput.focus();
+}
+
+tabLogin.addEventListener("click", () => setLoginMode("login"));
+tabCreate.addEventListener("click", () => setLoginMode("create"));
+
+// ====== CONNEXION ======
+async function loginPlayer(pseudo){
+  loginError.textContent = "";
+  joinBtn.disabled = true;
+
+  const { data: existing, error: fetchErr } = await sb
+    .from("capchat_players")
+    .select("pseudo")
+    .eq("pseudo", pseudo)
+    .maybeSingle();
+
+  joinBtn.disabled = false;
+
+  if (fetchErr) {
+    loginError.textContent = "Erreur de connexion à la base.";
+    return false;
+  }
+  if (!existing) {
+    loginError.textContent = "Ce compte n'existe pas. Utilise \"Créer un compte\".";
+    return false;
+  }
+
+  await sb
+    .from("capchat_players")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("pseudo", pseudo);
+
+  return true;
+}
+
+// ====== CREATION DE COMPTE ======
+async function createPlayer(pseudo){
+  loginError.textContent = "";
+  joinBtn.disabled = true;
+
+  const { data: existing, error: fetchErr } = await sb
+    .from("capchat_players")
+    .select("pseudo")
+    .eq("pseudo", pseudo)
+    .maybeSingle();
+
+  if (fetchErr) {
+    loginError.textContent = "Erreur de connexion à la base.";
+    joinBtn.disabled = false;
+    return false;
+  }
+  if (existing) {
+    loginError.textContent = "Ce pseudo est déjà pris. Utilise \"Se connecter\" ou choisis un autre pseudo.";
+    joinBtn.disabled = false;
+    return false;
+  }
+
+  const { error: insertErr } = await sb
+    .from("capchat_players")
+    .insert({ pseudo, last_seen: new Date().toISOString() });
+
+  joinBtn.disabled = false;
+
+  if (insertErr) {
+    loginError.textContent = "Ce compte n'a pas pu être créé. Essaie un autre pseudo.";
+    return false;
+  }
+  return true;
+}
+
+const passwordInput = document.getElementById("password-input");
+const ADMIN_PASSWORD = "055454591";
+
+// Afficher le champ mot de passe quand on tape "nathan"
+pseudoInput.addEventListener("input", () => {
+  const val = pseudoInput.value.trim().toLowerCase();
+  if (val === ADMIN_PSEUDO) {
+    passwordInput.style.display = "block";
+    passwordInput.focus();
+  } else {
+    passwordInput.style.display = "none";
+    passwordInput.value = "";
+  }
+});
+
+
+async function handleJoin() {
+  const pseudo = pseudoInput.value.trim();
+  if (!pseudo) { loginError.textContent = "Entre un pseudo."; return; }
+  if (pseudo.length > 20) { loginError.textContent = "20 caractères maximum."; return; }
+
+  // Vérification mot de passe admin
+  if (pseudo.toLowerCase() === ADMIN_PSEUDO) {
+    if (passwordInput.value !== ADMIN_PASSWORD) {
+      loginError.textContent = "Mot de passe incorrect.";
+      passwordInput.value = "";
+      passwordInput.focus();
+      return;
+    }
+  }
+
+  const ok = loginMode === "login"
+    ? await loginPlayer(pseudo)
+    : await createPlayer(pseudo);
+
+  if (ok) {
+    myPseudo = pseudo;
+    localStorage.setItem("capchat_pseudo", pseudo);
+    startApp();
+  }
+}
+
+document.getElementById("join-btn").addEventListener("click", handleJoin);
+
+pseudoInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleJoin();
+});
+passwordInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleJoin();
+});
+
+// ====== CHANGER DE COMPTE / DECONNEXION ======
+logoutBtn.addEventListener("click", () => {
+  if (!confirm(`Changer de compte ?\n\nVous serez déconnecté de "${myPseudo}".`)) return;
+  if (lastSeenInterval) clearInterval(lastSeenInterval);
+  if (messagesChannel) sb.removeChannel(messagesChannel);
+  if (playersChannel) sb.removeChannel(playersChannel);
+  localStorage.removeItem("capchat_pseudo");
+  myPseudo = null;
+  app.classList.add("hidden");
+  loginScreen.classList.remove("hidden");
+  setLoginMode("login");
+});
+
+// ====== DEMARRAGE APP ======
+async function startApp(){
+  loginScreen.classList.add("hidden");
+  app.classList.remove("hidden");
+  mePseudoEl.innerHTML = `Connecté en tant que<br><b>${escapeHtml(myPseudo)}</b>`;
+
+  showWelcomeIfNeeded();
+  await cleanupOldMessages();
+  await loadMessages();
+  await loadPlayers();
+  await loadAllReads();
+  subscribeRealtime();
+  startHeartbeat();
+}
+
+// ====== MODAL DE BIENVENUE ======
+function showWelcomeIfNeeded(){
+  if (!localStorage.getItem("capchat_welcome_seen")) {
+    welcomeModal.classList.remove("hidden");
+  }
+}
+
+welcomeCloseBtn.addEventListener("click", () => {
+  welcomeModal.classList.add("hidden");
+  localStorage.setItem("capchat_welcome_seen", "1");
+});
+
+// ====== NETTOYAGE AUTOMATIQUE (24H) ======
+async function cleanupOldMessages(){
+  const last = localStorage.getItem(CLEANUP_KEY);
+  const now = Date.now();
+  if (last && (now - Number(last)) < CLEANUP_INTERVAL_MS) return;
+
+  // Supprime tous les messages de plus de 24h (ou tous, si c'est le tout premier nettoyage déclenché)
+  const cutoff = new Date(now - CLEANUP_INTERVAL_MS).toISOString();
+  await sb
+    .from("capchat_messages")
+    .delete()
+    .lt("created_at", cutoff);
+
+  localStorage.setItem(CLEANUP_KEY, String(now));
+}
+
+// ====== HEARTBEAT (présence en ligne) ======
+function startHeartbeat(){
+  updateLastSeen();
+  lastSeenInterval = setInterval(updateLastSeen, HEARTBEAT_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") updateLastSeen();
+  });
+}
+
+async function updateLastSeen(){
+  if (isAdmin()) return; // Admin reste invisible (pas de mise à jour last_seen)
+  await sb
+    .from("capchat_players")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("pseudo", myPseudo);
+}
+
+// ====== MESSAGES ======
+async function loadMessages(){
+  const { data, error } = await sb
+    .from("capchat_messages")
+    .select("*")
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) {
+    messagesEl.innerHTML = `<div class="day-divider">Impossible de charger les messages.</div>`;
+    return;
+  }
+
+  messagesEl.innerHTML = "";
+  let lastDay = null;
+  data.forEach(m => {
+    const day = formatDay(m.created_at);
+    if (day !== lastDay) {
+      const div = document.createElement("div");
+      div.className = "day-divider";
+      div.textContent = day;
+      messagesEl.appendChild(div);
+      lastDay = day;
+    }
+    appendMessage(m, false);
+  });
+  scrollToBottom();
+}
+
+function appendMessage(m, animate){
+  const wrapper = document.createElement("div");
+  const isMe = m.pseudo === myPseudo;
+  wrapper.className = "msg-wrapper " + (isMe ? "me" : "other");
+  wrapper.dataset.id = m.id;
+
+  const replyIcon = document.createElement("div");
+  replyIcon.className = "reply-icon";
+  replyIcon.textContent = "↩️";
+  wrapper.appendChild(replyIcon);
+
+  const content = document.createElement("div");
+  content.className = "swipe-content " + (isMe ? "me" : "other");
+
+  const div = document.createElement("div");
+  div.className = "msg " + (isMe ? "me" : "other");
+  div.dataset.id = m.id;
+
+  let replyHtml = "";
+  if (m.reply_to && messageCache[m.reply_to]) {
+    const r = messageCache[m.reply_to];
+    if (r.deleted) {
+      replyHtml = `<div class="reply-preview"><span class="reply-text" style="font-style:italic;opacity:0.6;">Message supprime</span></div>`;
+    } else {
+      replyHtml = `<div class="reply-preview"><span class="reply-author">${escapeHtml(r.pseudo)}</span><span class="reply-text">${escapeHtml(r.content)}</span></div>`;
+    }
+  } else if (m.reply_to) {
+    replyHtml = `<div class="reply-preview"><span class="reply-text" style="font-style:italic;opacity:0.6;">Message supprime</span></div>`;
+  }
+
+  div.innerHTML = `
+    ${isMe ? "" : `<span class="author">${escapeHtml(m.pseudo)}</span>`}
+    ${replyHtml}
+    <span class="text">${m.deleted ? '<em class="deleted-msg">🗑️ Ce message a été supprimé</em>' : escapeHtml(m.content)}</span>
+    <span class="meta">${m.deleted ? "" : (m.edited ? '<span class="edited-tag">modifié</span> ' : "") + formatTime(m.created_at)}</span>
+    <span class="seen-by"></span>
+  `;
+
+  content.appendChild(div);
+  wrapper.appendChild(content);
+
+  messageCache[m.id] = m;
+  attachLongPress(wrapper, div, m);
+  attachSwipe(wrapper, content, replyIcon, m);
+  attachSeenToggle(div);
+
+  messagesEl.appendChild(wrapper);
+  if (animate) scrollToBottom();
+  observeMessage(div);
+}
+
+// ====== "VU PAR" (lecture des messages) ======
+let readsObserver = null;
+const seenCache = {}; // message_id -> [pseudo, ...]
+const messageCache = {}; // message_id -> message object (pour reply previews)
+
+function observeMessage(div){
+  if (!readsObserver) {
+    readsObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.dataset.id;
+          markAsRead(id);
+          readsObserver.unobserve(entry.target);
+        }
+      });
+    }, { root: messagesEl, threshold: 0.6 });
+  }
+  readsObserver.observe(div);
+}
+
+async function markAsRead(messageId){
+  if (!messageId) return;
+  if (isAdmin()) return; // Admin ne laisse pas de trace de lecture
+  await sb
+    .from("capchat_message_reads")
+    .upsert({ message_id: Number(messageId), pseudo: myPseudo, seen_at: new Date().toISOString() }, { onConflict: "message_id,pseudo" });
+}
+
+async function loadAllReads(){
+  const { data, error } = await sb
+    .from("capchat_message_reads")
+    .select("message_id, pseudo");
+  if (error) return;
+  data.forEach(r => {
+    if (!seenCache[r.message_id]) seenCache[r.message_id] = [];
+    if (!seenCache[r.message_id].includes(r.pseudo)) seenCache[r.message_id].push(r.pseudo);
+  });
+}
+
+function renderSeenBy(messageId){
+  const div = messagesEl.querySelector(`.msg[data-id="${messageId}"]`);
+  if (!div) return;
+  const seenSpan = div.querySelector(".seen-by");
+  const list = (seenCache[messageId] || []).filter(p => p !== myPseudo && p.toLowerCase() !== ADMIN_PSEUDO);
+
+  if (list.length === 0) {
+    seenSpan.textContent = "Pas encore vu";
+  } else {
+    seenSpan.textContent = "Vu par " + list.join(", ");
+  }
+}
+
+function attachSeenToggle(div){
+  div.addEventListener("click", () => {
+    const id = div.dataset.id;
+    renderSeenBy(id);
+    div.classList.toggle("show-seen");
+  });
+}
+
+function attachLongPress(wrapper, div, m){
+  let timer = null;
+  let moved = false;
+  const start = () => {
+    moved = false;
+    timer = setTimeout(() => {
+      if (!moved) openActionMenu(m);
+    }, 450);
+  };
+  const cancel = () => { clearTimeout(timer); };
+  const markMoved = () => { moved = true; clearTimeout(timer); };
+
+  wrapper.addEventListener("touchstart", start, { passive: true });
+  wrapper.addEventListener("touchend", cancel);
+  wrapper.addEventListener("touchmove", markMoved);
+
+  wrapper.addEventListener("mousedown", start);
+  wrapper.addEventListener("mouseup", cancel);
+  wrapper.addEventListener("mouseleave", cancel);
+}
+
+// ====== MENU D'ACTIONS (répondre / modifier / supprimer) ======
+function openActionMenu(m){
+  // Si le message est déjà supprimé, on ne propose que "Répondre"
+  activeMenuMessage = m;
+  const isMe = m.pseudo === myPseudo;
+  const isDeleted = m.deleted;
+  actionReply.classList.toggle("hidden", isDeleted);
+  actionEdit.classList.toggle("hidden", !isMe || isDeleted);
+  actionDelete.classList.toggle("hidden", (!isMe && !isAdmin()) || isDeleted);
+  actionMenu.classList.remove("hidden");
+}
+
+function closeActionMenu(){
+  actionMenu.classList.add("hidden");
+  activeMenuMessage = null;
+}
+
+actionCancel.addEventListener("click", closeActionMenu);
+actionMenu.addEventListener("click", (e) => {
+  if (e.target === actionMenu) closeActionMenu();
+});
+
+actionReply.addEventListener("click", () => {
+  if (activeMenuMessage) setReplyTarget(activeMenuMessage);
+  closeActionMenu();
+});
+
+actionEdit.addEventListener("click", () => {
+  if (activeMenuMessage) startEditMessage(activeMenuMessage);
+  closeActionMenu();
+});
+
+actionDelete.addEventListener("click", async () => {
+  if (activeMenuMessage) await deleteMessage(activeMenuMessage);
+  closeActionMenu();
+});
+
+// ====== REPONDRE A UN MESSAGE ======
+function setReplyTarget(m){
+  // On ne peut pas répondre à un message supprimé
+  if (m.deleted) return;
+  replyingTo = m;
+  editingMessageId = null;
+  replyBarAuthor.textContent = m.pseudo === myPseudo ? "Toi" : m.pseudo;
+  replyBarText.textContent = m.content;
+  replyBar.classList.remove("hidden");
+  msgInput.placeholder = "Écris ta réponse...";
+  msgInput.focus();
+}
+
+function clearReply(){
+  replyingTo = null;
+  replyBar.classList.add("hidden");
+  msgInput.placeholder = "Écris un message... 😄";
+}
+
+replyCancelBtn.addEventListener("click", clearReply);
+
+// ====== MODIFIER UN MESSAGE ======
+function startEditMessage(m){
+  editingMessageId = m.id;
+  replyingTo = null;
+  msgInput.value = m.content;
+  msgInput.style.height = "auto";
+  msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + "px";
+  replyBarAuthor.textContent = "Modification";
+  replyBarText.textContent = m.content;
+  replyBar.classList.remove("hidden");
+  msgInput.focus();
+}
+
+function clearEdit(){
+  editingMessageId = null;
+  msgInput.value = "";
+  msgInput.style.height = "auto";
+  replyBar.classList.add("hidden");
+}
+
+// ====== SUPPRIMER UN MESSAGE (soft delete comme WhatsApp) ======
+async function deleteMessage(m){
+  await sb
+    .from("capchat_messages")
+    .update({ deleted: true, content: "" })
+    .eq("id", m.id);
+  // L'affichage est mis à jour via le listener UPDATE en temps réel
+}
+
+// ====== SWIPE POUR REPONDRE ======
+function attachSwipe(wrapper, content, replyIcon, m){
+  let startX = 0;
+  let currentX = 0;
+  let dragging = false;
+  const THRESHOLD = 60;
+
+  const onStart = (clientX) => {
+    startX = clientX;
+    dragging = true;
+    content.style.transition = "none";
+  };
+  const onMove = (clientX) => {
+    if (!dragging) return;
+    // Pas de swipe sur un message supprimé
+    if (m.deleted) return;
+    let dx = clientX - startX;
+    // On ne permet de swiper que vers la droite
+    dx = Math.max(0, Math.min(dx, 90));
+    currentX = dx;
+    content.style.transform = `translateX(${dx}px)`;
+    replyIcon.classList.toggle("visible", dx > 30);
+  };
+  const onEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    content.style.transition = "transform 0.15s ease";
+    content.style.transform = "translateX(0)";
+    replyIcon.classList.remove("visible");
+    if (currentX > THRESHOLD && !m.deleted) {
+      setReplyTarget(m);
+    }
+    currentX = 0;
+  };
+
+  wrapper.addEventListener("touchstart", (e) => {
+    onStart(e.touches[0].clientX);
+  }, { passive: true });
+  wrapper.addEventListener("touchmove", (e) => {
+    onMove(e.touches[0].clientX);
+  }, { passive: true });
+  wrapper.addEventListener("touchend", onEnd);
+
+  wrapper.addEventListener("mousedown", (e) => onStart(e.clientX));
+  wrapper.addEventListener("mousemove", (e) => { if (dragging) onMove(e.clientX); });
+  wrapper.addEventListener("mouseup", onEnd);
+}
+
+function scrollToBottom(){
+  requestAnimationFrame(() => {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  });
+}
+
+async function sendMessage(){
+  const content = msgInput.value.trim();
+  if (!content) return;
+
+  sendBtn.disabled = true;
+
+  if (editingMessageId) {
+    const { error } = await sb
+      .from("capchat_messages")
+      .update({ content, edited: true })
+      .eq("id", editingMessageId);
+
+    if (!error) {
+      const wrapper = messagesEl.querySelector(`.msg-wrapper[data-id="${editingMessageId}"]`);
+      if (wrapper) {
+        const m = messageCache[editingMessageId];
+        m.content = content;
+        m.edited = true;
+        const textSpan = wrapper.querySelector(".text");
+        if (textSpan) textSpan.textContent = content;
+        const meta = wrapper.querySelector(".meta");
+        if (meta && !meta.querySelector(".edited-tag")) {
+          meta.insertAdjacentHTML("afterbegin", '<span class="edited-tag">modifié</span> ');
+        }
+      }
+      clearEdit();
+      msgInput.value = "";
+      msgInput.style.height = "auto";
+    }
+    sendBtn.disabled = false;
+    updateLastSeen();
+    return;
+  }
+
+  const payload = { pseudo: myPseudo, content };
+  if (replyingTo) payload.reply_to = replyingTo.id;
+
+  const { error } = await sb
+    .from("capchat_messages")
+    .insert(payload);
+
+  if (!error) {
+    msgInput.value = "";
+    msgInput.style.height = "auto";
+    clearReply();
+  }
+  sendBtn.disabled = false;
+  updateLastSeen();
+}
+
+// Les listeners du bouton et de la touche Entrée sont ajoutés plus bas avec le son
+msgInput.addEventListener("input", () => {
+  msgInput.style.height = "auto";
+  msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + "px";
+});
+
+// ====== JOUEURS / PRESENCE ======
+async function loadPlayers(){
+  const { data, error } = await sb
+    .from("capchat_players")
+    .select("*")
+    .order("pseudo", { ascending: true });
+
+  if (error) return;
+  renderPlayers(data);
+}
+
+function renderPlayers(players){
+  playersBar.innerHTML = "";
+  let onlineCount = 0;
+
+  players.forEach(p => {
+    // Admin invisible pour les autres joueurs
+    if (p.pseudo.toLowerCase() === ADMIN_PSEUDO && myPseudo.toLowerCase() !== ADMIN_PSEUDO) return;
+
+    const status = timeAgoLabel(p.last_seen);
+    if (status.online && p.pseudo.toLowerCase() !== ADMIN_PSEUDO) onlineCount++;
+
+    const chip = document.createElement("div");
+    chip.className = "player-chip";
+    const adminBadge = p.pseudo.toLowerCase() === ADMIN_PSEUDO ? " 👑" : "";
+    chip.innerHTML = `
+      <span class="dot ${status.online ? "online" : ""}"></span>
+      <span>${escapeHtml(p.pseudo)}${adminBadge}${p.pseudo === myPseudo ? " (toi)" : ""} — ${status.label}</span>
+    `;
+    playersBar.appendChild(chip);
+  });
+
+  // Ne pas compter l admin dans les stats visibles
+  const visibleCount = players.filter(p => p.pseudo.toLowerCase() !== ADMIN_PSEUDO || myPseudo.toLowerCase() === ADMIN_PSEUDO).length;
+  playersSummary.textContent = `${visibleCount} joueur${visibleCount > 1 ? "s" : ""} inscrit${visibleCount > 1 ? "s" : ""} · ${onlineCount} en ligne`;
+}
+
+// ====== REALTIME ======
+function subscribeRealtime(){
+  messagesChannel = sb
+    .channel("capchat_messages_changes")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "capchat_messages" }, (payload) => {
+      const m = payload.new;
+      if (messageCache[m.id]) return; // déjà affiché localement
+      // évite le doublon si c'est notre propre message déjà affiché localement (optionnel ici car on n'affiche pas en local avant)
+      const lastDivider = messagesEl.querySelector(".day-divider:last-of-type");
+      const today = formatDay(m.created_at);
+      if (!lastDivider || lastDivider.textContent !== today) {
+        const div = document.createElement("div");
+        div.className = "day-divider";
+        div.textContent = today;
+        messagesEl.appendChild(div);
+      }
+      appendMessage(m, true);
+    })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "capchat_messages" }, (payload) => {
+      const m = payload.new;
+      messageCache[m.id] = m;
+      const wrapper = messagesEl.querySelector(`.msg-wrapper[data-id="${m.id}"]`);
+      if (!wrapper) return;
+      const textSpan = wrapper.querySelector(".text");
+      if (m.deleted) {
+        if (textSpan) textSpan.innerHTML = '<em class="deleted-msg">🗑️ Ce message a été supprimé</em>';
+        const meta = wrapper.querySelector(".meta");
+        if (meta) meta.innerHTML = "";
+        return;
+      }
+      if (textSpan) textSpan.textContent = m.content;
+      const meta = wrapper.querySelector(".meta");
+      if (meta && m.edited && !meta.querySelector(".edited-tag")) {
+        meta.insertAdjacentHTML("afterbegin", '<span class="edited-tag">modifié</span> ');
+      }
+    })
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "capchat_messages" }, (payload) => {
+      // Les messages supprimés sont gérés via soft delete (UPDATE), pas DELETE
+      // On garde ce listener au cas où des suppressions directes arrivent (ex: nettoyage 24h)
+      const id = payload.old.id;
+      const wrapper = messagesEl.querySelector(`.msg-wrapper[data-id="${id}"]`);
+      if (wrapper) wrapper.remove();
+      delete messageCache[id];
+    })
+    .subscribe();
+
+  playersChannel = sb
+    .channel("capchat_players_changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "capchat_players" }, () => {
+      loadPlayers();
+    })
+    .subscribe();
+
+  sb
+    .channel("capchat_reads_changes")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "capchat_message_reads" }, (payload) => {
+      const r = payload.new;
+      if (!seenCache[r.message_id]) seenCache[r.message_id] = [];
+      if (!seenCache[r.message_id].includes(r.pseudo)) seenCache[r.message_id].push(r.pseudo);
+      const div = messagesEl.querySelector(`.msg[data-id="${r.message_id}"]`);
+      if (div && div.classList.contains("show-seen")) {
+        renderSeenBy(r.message_id);
+      }
+    })
+    .subscribe();
+
+  // Rafraîchit les statuts "en ligne" toutes les 20s même sans changement DB
+  setInterval(loadPlayers, 20000);
+}
+
+// ====== UTILS ======
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ====== SONS (Web Audio API) ======
+let audioCtx = null;
+
+function getAudioCtx(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, type, duration, vol, fadeOut){
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol || 0.18, ctx.currentTime);
+    if (fadeOut) gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function playClick(){ playTone(880, "sine", 0.06, 0.12, true); }
+function playSend(){ 
+  playTone(660, "sine", 0.05, 0.14, true);
+  setTimeout(() => playTone(880, "sine", 0.07, 0.1, true), 50);
+}
+function playReceive(){
+  playTone(520, "sine", 0.07, 0.12, true);
+  setTimeout(() => playTone(660, "sine", 0.08, 0.1, true), 60);
+}
+function playDelete(){
+  playTone(300, "sawtooth", 0.08, 0.1, true);
+  setTimeout(() => playTone(220, "sawtooth", 0.1, 0.08, true), 70);
+}
+function playSwipe(){
+  playTone(700, "triangle", 0.06, 0.1, true);
+}
+function playLogin(){
+  playTone(440, "sine", 0.07, 0.13, true);
+  setTimeout(() => playTone(554, "sine", 0.07, 0.11, true), 80);
+  setTimeout(() => playTone(660, "sine", 0.09, 0.12, true), 160);
+}
+function playTheme(){
+  playTone(740, "triangle", 0.07, 0.12, true);
+  setTimeout(() => playTone(988, "triangle", 0.08, 0.1, true), 80);
+}
+
+// Son sur les boutons UI clés
+document.addEventListener("DOMContentLoaded", () => {
+  const clickBtns = ["tab-login","tab-create","logout-btn","reply-cancel-btn","action-reply","action-edit","action-cancel","welcome-close-btn","theme-btn","music-btn"];
+  clickBtns.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", playClick);
+  });
+
+  document.getElementById("action-delete")?.addEventListener("click", playDelete);
+  document.getElementById("join-btn")?.addEventListener("click", () => {
+    setTimeout(() => { if (!loginError.textContent) playLogin(); }, 100);
+  });
+});
+
+// Son envoi message — hook sur le bouton et la touche Entrée
+const _origSendMessage = sendMessage;
+async function sendMessageWithSound(){
+  const content = msgInput.value.trim();
+  await _origSendMessage();
+  if (content) playSend();
+}
+sendBtn.removeEventListener("click", sendMessage);
+sendBtn.addEventListener("click", sendMessageWithSound);
+msgInput.removeEventListener("keydown", sendMessage);
+msgInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessageWithSound();
+  }
+});
+
+// Son réception message (realtime) — patch sur l'objet global
+const _origAppend = appendMessage;
+window._appendMessageWithSound = function(m, animate){
+  _origAppend(m, animate);
+  if (animate && m.pseudo !== myPseudo) playReceive();
+};
+
+// Son swipe — patch sur la fonction globale
+const _origSetReply = setReplyTarget;
+window._setReplyTargetWithSound = function(m){
+  _origSetReply(m);
+  playSwipe();
+};
+
+// ====== MUSIQUE DE FOND ======
+let bgMusic = null;
+let musicPlaying = false;
+
+function initMusic(){
+  if (bgMusic) return;
+  bgMusic = new Audio("music.mp3");
+  bgMusic.loop = true;
+  bgMusic.volume = 0.25;
+  bgMusic.addEventListener("error", () => {
+    document.getElementById("music-btn").title = "Fichier music.mp3 introuvable";
+    document.getElementById("music-btn").textContent = "🔇";
+  });
+}
+
+function toggleMusic(){
+  playClick();
+  initMusic();
+  const btn = document.getElementById("music-btn");
+  if (!musicPlaying) {
+    bgMusic.play().then(() => {
+      musicPlaying = true;
+      btn.textContent = "🎶";
+      btn.classList.add("active");
+      localStorage.setItem("capchat_music", "1");
+    }).catch(() => {
+      btn.title = "Impossible de lire music.mp3";
+    });
+  } else {
+    bgMusic.pause();
+    musicPlaying = false;
+    btn.textContent = "🎵";
+    btn.classList.remove("active");
+    localStorage.setItem("capchat_music", "0");
+  }
+}
+
+document.getElementById("music-btn").addEventListener("click", toggleMusic);
+
+// ====== THÈMES ======
+const THEMES = ["green","violet"];
+const THEME_LABELS = { green: "🌿 Vert", violet: "💜 Violet" };
+let currentTheme = localStorage.getItem("capchat_theme") || "green";
+
+function applyTheme(theme){
+  currentTheme = theme;
+  document.documentElement.setAttribute("data-theme", theme === "green" ? "" : theme);
+  const btn = document.getElementById("theme-btn");
+  btn.textContent = theme === "green" ? "🎨" : "🎨";
+  btn.title = `Thème actuel : ${THEME_LABELS[theme]}`;
+  localStorage.setItem("capchat_theme", theme);
+}
+
+function cycleTheme(){
+  playTheme();
+  const next = currentTheme === "green" ? "violet" : "green";
+  applyTheme(next);
+  // Petit toast visuel
+  showThemeToast(THEME_LABELS[next]);
+}
+
+function showThemeToast(label){
+  let toast = document.getElementById("theme-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "theme-toast";
+    toast.style.cssText = `
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+      background:var(--panel); color:var(--text); padding:8px 18px;
+      border-radius:20px; font-size:0.85rem; z-index:9999;
+      border:1px solid var(--accent); opacity:0;
+      transition:opacity 0.2s; pointer-events:none;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = `Thème ${label}`;
+  toast.style.opacity = "1";
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = "0"; }, 1800);
+}
+
+document.getElementById("theme-btn").addEventListener("click", cycleTheme);
+
+// Applique le thème sauvegardé dès le chargement
+applyTheme(currentTheme);
+
+// ====== AUTO-LOGIN SI PSEUDO DEJA CONNU ======
+window.addEventListener("DOMContentLoaded", async () => {
+  if (myPseudo) {
+    const ok = await loginPlayer(myPseudo);
+    if (ok) {
+      startApp();
+    } else {
+      // Le compte n'existe plus en base (ex: tables recréées) → retour au login
+      localStorage.removeItem("capchat_pseudo");
+      myPseudo = null;
+      setLoginMode("login");
+    }
+  } else {
+    setLoginMode("login");
+  }
+});
+</script>
+</body>
+</html>
